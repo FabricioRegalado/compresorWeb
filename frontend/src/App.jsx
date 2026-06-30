@@ -127,17 +127,23 @@ function App() {
     try {
       const source = await file.arrayBuffer()
       const pdf = await pdfjsLib.getDocument({ data: source }).promise
-      const output = new jsPDF({ unit: 'pt', compress: true })
-      output.deletePage(1)
+      let output = null
 
       for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
         const page = await pdf.getPage(pageNumber)
+        const pageViewport = page.getViewport({ scale: 1 })
         const viewport = page.getViewport({ scale })
         const canvas = document.createElement('canvas')
         const context = canvas.getContext('2d', { alpha: false })
 
+        if (!context) {
+          throw new Error('No se pudo crear el contexto de renderizado.')
+        }
+
         canvas.width = Math.floor(viewport.width)
         canvas.height = Math.floor(viewport.height)
+        context.fillStyle = '#ffffff'
+        context.fillRect(0, 0, canvas.width, canvas.height)
 
         await page.render({
           canvasContext: context,
@@ -146,14 +152,30 @@ function App() {
         }).promise
 
         const imageData = canvas.toDataURL('image/jpeg', quality)
-        const orientation = viewport.width > viewport.height ? 'landscape' : 'portrait'
+        const orientation = pageViewport.width > pageViewport.height ? 'landscape' : 'portrait'
+        const pageSize = [pageViewport.width, pageViewport.height]
 
-        output.addPage([viewport.width, viewport.height], orientation)
-        output.addImage(imageData, 'JPEG', 0, 0, viewport.width, viewport.height, undefined, 'FAST')
+        if (!output) {
+          output = new jsPDF({
+            unit: 'pt',
+            format: pageSize,
+            orientation,
+            compress: true,
+          })
+        } else {
+          output.addPage(pageSize, orientation)
+        }
+
+        output.addImage(imageData, 'JPEG', 0, 0, pageViewport.width, pageViewport.height, undefined, 'FAST')
 
         canvas.width = 0
         canvas.height = 0
+        page.cleanup()
         setProgress(Math.round((pageNumber / pdf.numPages) * 100))
+      }
+
+      if (!output) {
+        throw new Error('El PDF no contiene paginas para comprimir.')
       }
 
       const blob = output.output('blob')
@@ -346,7 +368,7 @@ function App() {
 
       <footer className="site-footer">
         <p>
-          © {new Date().getFullYear()} Oscar Fabricio Regalado Pérez. Todos los derechos reservados.
+          &copy; {new Date().getFullYear()} Oscar Fabricio Regalado P&eacute;rez. Todos los derechos reservados.
         </p>
       </footer>
     </main>
