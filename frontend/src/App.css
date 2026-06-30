@@ -1,0 +1,370 @@
+.app-shell {
+  width: min(1180px, calc(100% - 32px));
+  min-height: 100svh;
+  margin: 0 auto;
+  padding: 28px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.topbar {
+  min-height: 132px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.brand-mark,
+.dropzone-icon {
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+}
+
+.brand-mark {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.topbar h1 {
+  max-width: 780px;
+  margin: 0;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 372px;
+  gap: 22px;
+  align-items: stretch;
+}
+
+.dropzone,
+.controls-panel,
+.action-band {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.dropzone {
+  min-height: 438px;
+  padding: 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  text-align: center;
+  border-style: dashed;
+  border-radius: 8px;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.dropzone.is-dragging {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  transform: translateY(-2px);
+}
+
+.dropzone.has-file {
+  border-style: solid;
+}
+
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.dropzone-icon {
+  width: 82px;
+  height: 82px;
+  border-radius: 8px;
+}
+
+.dropzone-copy h2 {
+  max-width: 620px;
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.dropzone-copy p {
+  margin: 10px 0 0;
+  color: var(--muted);
+}
+
+.controls-panel {
+  padding: 22px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+}
+
+.panel-heading h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.profile-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-option {
+  width: 100%;
+  min-height: 84px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text);
+  background: var(--surface-raised);
+  text-align: left;
+  cursor: pointer;
+}
+
+.profile-option span {
+  color: var(--heading);
+  font-weight: 800;
+}
+
+.profile-option small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.profile-option.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.range-control {
+  display: grid;
+  gap: 10px;
+}
+
+.range-control span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.range-control strong {
+  color: var(--heading);
+}
+
+.range-control input {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.privacy-note {
+  margin-top: auto;
+  padding: 13px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--success);
+  background: var(--success-soft);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.action-band {
+  padding: 20px;
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 280px) auto;
+  align-items: center;
+  gap: 18px;
+}
+
+.status-block {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--accent);
+}
+
+.status-block div {
+  min-width: 0;
+}
+
+.status-block strong,
+.status-block p {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.status-block strong {
+  color: var(--heading);
+}
+
+.status-block p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.progress-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--track);
+}
+
+.progress-track span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 220ms ease;
+}
+
+.button-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.primary-button,
+.secondary-button {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.primary-button {
+  color: #ffffff;
+  background: var(--accent);
+}
+
+.secondary-button {
+  color: var(--heading);
+  background: var(--surface-raised);
+  border-color: var(--border);
+}
+
+.primary-button:disabled,
+.secondary-button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.download-link {
+  min-width: 168px;
+}
+
+.spin {
+  animation: spin 850ms linear infinite;
+}
+
+.site-footer {
+  padding: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    width: min(100% - 24px, 680px);
+    padding: 18px 0;
+  }
+
+  .topbar {
+    min-height: auto;
+    padding-bottom: 22px;
+  }
+
+  .workspace,
+  .action-band {
+    grid-template-columns: 1fr;
+  }
+
+  .dropzone {
+    min-height: 340px;
+    padding: 26px 18px;
+  }
+
+  .button-row {
+    justify-content: stretch;
+  }
+
+  .primary-button,
+  .secondary-button,
+  .download-link {
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .topbar {
+    grid-template-columns: 1fr;
+  }
+
+  .dropzone-copy h2 {
+    font-size: 26px;
+  }
+
+  .button-row {
+    flex-direction: column;
+  }
+}
