@@ -48,7 +48,20 @@ npm run dev
 npm run build
 npm run lint
 npm run preview
+npm run deploy
 ```
+
+## Deploy en GitHub Pages
+
+El proyecto esta preparado para publicarse en GitHub Pages desde el repositorio `compresorWeb`.
+
+```bash
+cd frontend
+npm install
+npm run deploy
+```
+
+El script `deploy` genera la carpeta `dist` y la publica mediante `gh-pages`. La configuracion de Vite usa `base: '/compresorWeb/'` para que los archivos estaticos carguen correctamente en GitHub Pages.
 
 ## Consideraciones
 
