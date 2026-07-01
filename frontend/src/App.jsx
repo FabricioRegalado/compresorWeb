@@ -24,6 +24,7 @@ const MAX_CANVAS_SIDE = 4096
 const MAX_CANVAS_PIXELS = 12000000
 const MIN_RENDER_SCALE = 0.6
 const MAX_ANALYSIS_PAGES = 4
+const PDFJS_ASSET_BASE = `${import.meta.env.BASE_URL}pdfjs/`
 
 const imageOperators = new Set(
   [
@@ -68,6 +69,15 @@ const buildOutputName = (name) => {
   return `${cleanName || 'documento'}-comprimido.pdf`
 }
 
+const loadPdfDocument = (data) =>
+  pdfjsLib.getDocument({
+    data,
+    cMapPacked: true,
+    cMapUrl: `${PDFJS_ASSET_BASE}cmaps/`,
+    standardFontDataUrl: `${PDFJS_ASSET_BASE}standard_fonts/`,
+    wasmUrl: `${PDFJS_ASSET_BASE}wasm/`,
+  }).promise
+
 const getSafeRenderScale = (pageViewport, requestedScale) => {
   const sideLimit = Math.min(
     MAX_CANVAS_SIDE / pageViewport.width,
@@ -94,8 +104,20 @@ const canvasToJpegBlob = (canvas, imageQuality) =>
     )
   })
 
-const getDocumentInsight = ({ textCharacters, imageOperations }) => {
-  if (textCharacters >= 180 && imageOperations >= 2) {
+const getDocumentInsight = ({ textCharacters, imageOperations, pagesAnalyzed }) => {
+  const hasReadableText = textCharacters >= 180
+  const hasPageImages = imageOperations >= Math.max(1, Math.floor(pagesAnalyzed * 0.75))
+
+  if (hasReadableText && hasPageImages) {
+    return {
+      status: 'done',
+      title: 'Escaneo con texto/OCR detectado',
+      message: 'Tiene imagenes por pagina y texto extraible. Usa Equilibrado para conservar mejor la lectura visual.',
+      recommendedProfile: 'balanced',
+    }
+  }
+
+  if (hasReadableText && imageOperations >= 1) {
     return {
       status: 'done',
       title: 'Contenido mixto detectado',
@@ -104,7 +126,7 @@ const getDocumentInsight = ({ textCharacters, imageOperations }) => {
     }
   }
 
-  if (textCharacters >= 180) {
+  if (hasReadableText) {
     return {
       status: 'done',
       title: 'PDF de texto detectado',
@@ -113,7 +135,7 @@ const getDocumentInsight = ({ textCharacters, imageOperations }) => {
     }
   }
 
-  if (imageOperations >= 1) {
+  if (hasPageImages) {
     return {
       status: 'done',
       title: 'PDF escaneado detectado',
@@ -181,7 +203,7 @@ function App() {
 
       try {
         const source = await file.arrayBuffer()
-        const pdf = await pdfjsLib.getDocument({ data: source }).promise
+        const pdf = await loadPdfDocument(source)
         const pagesToAnalyze = Math.min(pdf.numPages, MAX_ANALYSIS_PAGES)
         let textCharacters = 0
         let imageOperations = 0
@@ -204,7 +226,7 @@ function App() {
         await pdf.destroy()
 
         if (analysisRef.current !== analysisId) return
-        setDocumentInsight(getDocumentInsight({ textCharacters, imageOperations }))
+        setDocumentInsight(getDocumentInsight({ textCharacters, imageOperations, pagesAnalyzed: pagesToAnalyze }))
       } catch (caughtError) {
         console.error(caughtError)
 
@@ -274,7 +296,7 @@ function App() {
 
     try {
       const source = await file.arrayBuffer()
-      const pdf = await pdfjsLib.getDocument({ data: source }).promise
+      const pdf = await loadPdfDocument(source)
       let output = null
 
       for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
@@ -331,6 +353,7 @@ function App() {
 
       const blob = output.output('blob')
       const url = URL.createObjectURL(blob)
+      await pdf.destroy()
 
       setResult({
         url,
