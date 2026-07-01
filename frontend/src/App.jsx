@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertCircle,
   CheckCircle2,
@@ -23,6 +23,17 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
 const MAX_CANVAS_SIDE = 4096
 const MAX_CANVAS_PIXELS = 12000000
 const MIN_RENDER_SCALE = 0.6
+const MAX_ANALYSIS_PAGES = 4
+
+const imageOperators = new Set(
+  [
+    pdfjsLib.OPS?.paintImageXObject,
+    pdfjsLib.OPS?.paintInlineImageXObject,
+    pdfjsLib.OPS?.paintImageMaskXObject,
+    pdfjsLib.OPS?.paintImageMaskXObjectGroup,
+    pdfjsLib.OPS?.paintImageXObjectRepeat,
+  ].filter(Boolean),
+)
 
 const compressionProfiles = {
   balanced: {
@@ -83,6 +94,42 @@ const canvasToJpegBlob = (canvas, imageQuality) =>
     )
   })
 
+const getDocumentInsight = ({ textCharacters, imageOperations }) => {
+  if (textCharacters >= 180 && imageOperations >= 2) {
+    return {
+      status: 'done',
+      title: 'Contenido mixto detectado',
+      message: 'Combina texto e imagenes. Usa Equilibrado para mantener lectura y reducir peso.',
+      recommendedProfile: 'balanced',
+    }
+  }
+
+  if (textCharacters >= 180) {
+    return {
+      status: 'done',
+      title: 'PDF de texto detectado',
+      message: 'Puede perder seleccion, busqueda y enlaces. Se recomienda Mas nitido para conservar lectura.',
+      recommendedProfile: 'sharp',
+    }
+  }
+
+  if (imageOperations >= 1) {
+    return {
+      status: 'done',
+      title: 'PDF escaneado detectado',
+      message: 'Parece estar basado en imagenes. Alta compresion suele funcionar mejor en este caso.',
+      recommendedProfile: 'strong',
+    }
+  }
+
+  return {
+    status: 'done',
+    title: 'Tipo de PDF no concluyente',
+    message: 'Si el resultado pierde detalle, usa Mas nitido o sube la resolucion por pagina.',
+    recommendedProfile: 'sharp',
+  }
+}
+
 function App() {
   const [file, setFile] = useState(null)
   const [profileKey, setProfileKey] = useState('balanced')
@@ -93,7 +140,14 @@ function App() {
   const [progress, setProgress] = useState(0)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
+  const [documentInsight, setDocumentInsight] = useState({
+    status: 'idle',
+    title: 'Sin PDF cargado',
+    message: 'Carga un PDF para recibir una recomendacion automatica.',
+    recommendedProfile: 'balanced',
+  })
   const inputRef = useRef(null)
+  const analysisRef = useRef(0)
 
   const selectedProfile = compressionProfiles[profileKey]
   const hasResult = Boolean(result)
@@ -102,6 +156,70 @@ function App() {
     if (!file || !result) return 0
     return Math.max(0, Math.round((1 - result.size / file.size) * 100))
   }, [file, result])
+
+  useEffect(() => {
+    if (!file) {
+      setDocumentInsight({
+        status: 'idle',
+        title: 'Sin PDF cargado',
+        message: 'Carga un PDF para recibir una recomendacion automatica.',
+        recommendedProfile: 'balanced',
+      })
+      return
+    }
+
+    const analysisId = analysisRef.current + 1
+    analysisRef.current = analysisId
+
+    const analyzeDocument = async () => {
+      setDocumentInsight({
+        status: 'analyzing',
+        title: 'Analizando PDF',
+        message: 'Revisando si contiene texto real, imagenes o contenido mixto.',
+        recommendedProfile: 'balanced',
+      })
+
+      try {
+        const source = await file.arrayBuffer()
+        const pdf = await pdfjsLib.getDocument({ data: source }).promise
+        const pagesToAnalyze = Math.min(pdf.numPages, MAX_ANALYSIS_PAGES)
+        let textCharacters = 0
+        let imageOperations = 0
+
+        for (let pageNumber = 1; pageNumber <= pagesToAnalyze; pageNumber += 1) {
+          const page = await pdf.getPage(pageNumber)
+          const textContent = await page.getTextContent()
+          textCharacters += textContent.items.reduce((total, item) => total + (item.str?.trim().length || 0), 0)
+
+          try {
+            const operatorList = await page.getOperatorList()
+            imageOperations += operatorList.fnArray.filter((operator) => imageOperators.has(operator)).length
+          } catch {
+            imageOperations += 0
+          }
+
+          page.cleanup()
+        }
+
+        await pdf.destroy()
+
+        if (analysisRef.current !== analysisId) return
+        setDocumentInsight(getDocumentInsight({ textCharacters, imageOperations }))
+      } catch (caughtError) {
+        console.error(caughtError)
+
+        if (analysisRef.current !== analysisId) return
+        setDocumentInsight({
+          status: 'error',
+          title: 'No se pudo analizar el PDF',
+          message: 'Aun puedes comprimirlo. Si contiene texto, usa Mas nitido para proteger la lectura.',
+          recommendedProfile: 'sharp',
+        })
+      }
+    }
+
+    analyzeDocument()
+  }, [file])
 
   const assignFile = (selectedFile) => {
     if (!selectedFile) return
@@ -300,8 +418,23 @@ function App() {
               >
                 <span>{profile.label}</span>
                 <small>{profile.description}</small>
+                {documentInsight.recommendedProfile === key && documentInsight.status !== 'idle' ? (
+                  <em>Recomendado para este PDF</em>
+                ) : null}
               </button>
             ))}
+          </div>
+
+          <div className={`document-insight ${documentInsight.status}`}>
+            {documentInsight.status === 'analyzing' ? (
+              <Loader2 className="spin" size={18} aria-hidden="true" />
+            ) : (
+              <FileText size={18} aria-hidden="true" />
+            )}
+            <div>
+              <strong>{documentInsight.title}</strong>
+              <p>{documentInsight.message}</p>
+            </div>
           </div>
 
           <label className="range-control">
