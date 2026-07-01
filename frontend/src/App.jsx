@@ -69,7 +69,7 @@ const buildOutputName = (name) => {
   return `${cleanName || 'documento'}-comprimido.pdf`
 }
 
-const loadPdfDocument = (data) =>
+const createPdfLoadingTask = (data) =>
   pdfjsLib.getDocument({
     data,
     cMapPacked: true,
@@ -203,7 +203,8 @@ function App() {
 
       try {
         const source = await file.arrayBuffer()
-        const pdf = await loadPdfDocument(source)
+        const loadingTask = createPdfLoadingTask(source)
+        const pdf = await loadingTask.promise
         const pagesToAnalyze = Math.min(pdf.numPages, MAX_ANALYSIS_PAGES)
         let textCharacters = 0
         let imageOperations = 0
@@ -223,7 +224,7 @@ function App() {
           page.cleanup()
         }
 
-        await pdf.destroy()
+        await loadingTask.destroy()
 
         if (analysisRef.current !== analysisId) return
         setDocumentInsight(getDocumentInsight({ textCharacters, imageOperations, pagesAnalyzed: pagesToAnalyze }))
@@ -296,7 +297,8 @@ function App() {
 
     try {
       const source = await file.arrayBuffer()
-      const pdf = await loadPdfDocument(source)
+      const loadingTask = createPdfLoadingTask(source)
+      const pdf = await loadingTask.promise
       let output = null
 
       for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
@@ -353,7 +355,7 @@ function App() {
 
       const blob = output.output('blob')
       const url = URL.createObjectURL(blob)
-      await pdf.destroy()
+      await loadingTask.destroy()
 
       setResult({
         url,
