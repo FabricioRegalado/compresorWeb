@@ -20,6 +20,10 @@ import './App.css'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
 
+const MAX_CANVAS_SIDE = 4096
+const MAX_CANVAS_PIXELS = 12000000
+const MIN_RENDER_SCALE = 0.6
+
 const compressionProfiles = {
   balanced: {
     label: 'Equilibrado',
@@ -52,6 +56,32 @@ const buildOutputName = (name) => {
   const cleanName = name.replace(/\.pdf$/i, '')
   return `${cleanName || 'documento'}-comprimido.pdf`
 }
+
+const getSafeRenderScale = (pageViewport, requestedScale) => {
+  const sideLimit = Math.min(
+    MAX_CANVAS_SIDE / pageViewport.width,
+    MAX_CANVAS_SIDE / pageViewport.height,
+  )
+  const areaLimit = Math.sqrt(MAX_CANVAS_PIXELS / (pageViewport.width * pageViewport.height))
+
+  return Math.max(MIN_RENDER_SCALE, Math.min(requestedScale, sideLimit, areaLimit))
+}
+
+const canvasToJpegBlob = (canvas, imageQuality) =>
+  new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          resolve(blob)
+          return
+        }
+
+        reject(new Error('No se pudo convertir la pagina renderizada a imagen.'))
+      },
+      'image/jpeg',
+      imageQuality,
+    )
+  })
 
 function App() {
   const [file, setFile] = useState(null)
@@ -132,7 +162,8 @@ function App() {
       for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
         const page = await pdf.getPage(pageNumber)
         const pageViewport = page.getViewport({ scale: 1 })
-        const viewport = page.getViewport({ scale })
+        const renderScale = getSafeRenderScale(pageViewport, scale)
+        const viewport = page.getViewport({ scale: renderScale })
         const canvas = document.createElement('canvas')
         const context = canvas.getContext('2d', { alpha: false })
 
@@ -146,12 +177,14 @@ function App() {
         context.fillRect(0, 0, canvas.width, canvas.height)
 
         await page.render({
+          canvas,
           canvasContext: context,
           viewport,
-          background: 'white',
+          background: '#ffffff',
         }).promise
 
-        const imageData = canvas.toDataURL('image/jpeg', quality)
+        const imageBlob = await canvasToJpegBlob(canvas, quality)
+        const imageBytes = new Uint8Array(await imageBlob.arrayBuffer())
         const orientation = pageViewport.width > pageViewport.height ? 'landscape' : 'portrait'
         const pageSize = [pageViewport.width, pageViewport.height]
 
@@ -166,7 +199,7 @@ function App() {
           output.addPage(pageSize, orientation)
         }
 
-        output.addImage(imageData, 'JPEG', 0, 0, pageViewport.width, pageViewport.height, undefined, 'FAST')
+        output.addImage(imageBytes, 'JPEG', 0, 0, pageViewport.width, pageViewport.height, undefined, 'MEDIUM')
 
         canvas.width = 0
         canvas.height = 0
